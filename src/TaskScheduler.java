@@ -21,35 +21,32 @@ class Task_Tuple{
 }
 
 public class TaskScheduler{
-	
+	//we use regex patterns to check the validity of the input of tasks.
 	static private String task_name_pattern = "([a-z])([0-9])*";
 	static private String r_time_pattern = "(\\d)(\\d)*";
 	static private String d_time_pattern = "([1-9])(\\d)*";
-//	static private String file1_pattern = "(([a-z])([a-z]\\d)*(\\s)*)((\\d)(\\d)*(\\s)*)(([1-9])(\\d)*(\\s)*)";
-
-//	static Pattern file1_p = Pattern.compile(file1_pattern);
-	
+	//task_queue is a priority queue of tasks, the keys of which indicate release time.
 	static HeapPriorityQueue<Integer,Task_Tuple> task_queue = new HeapPriorityQueue<Integer,Task_Tuple>();
-	
+	//schedule_queue is a priority queue for the scheduler to implement EDF scheduling. The keys of this queue is the deadline time.
 	static HeapPriorityQueue<Integer,Task_Tuple> schedule_queue = new HeapPriorityQueue<Integer,Task_Tuple>();
-	//static String write_buffer_string = new String("");
+
 	//m is the number of cpu cores. 
 	static void scheduler(String file1, String file2, int m){
 		Scanner file1_scanner;
+		//we read input file file1.txt by a scanner, and FileNotFound exception is handled. 
 		try{
 			file1_scanner = new Scanner(new FileReader(file1));
-			
 		}catch(FileNotFoundException e){
 			System.out.println("File1 does not exsist.");
 			return;
 		}
-		StringBuffer task_buffer = new StringBuffer();
+		
 		while(file1_scanner.hasNext())   //firstly, add all the tasks into a priority task queue. The key of this queue is the release time.
 		{
 			Task_Tuple tmp = new Task_Tuple();
-			Integer release_time = -1;
-			String nextline;
-			String cur_task_name = "";
+			Integer release_time = null;  //the temporary release time variable for 
+			String nextline; //a temporary variable for the next line of the scanner. 
+			String cur_task_name = ""; //this variable is used to record the task name 
 			for(int i = 0; i < 3; i++)
 			{
 				try{
@@ -76,8 +73,7 @@ public class TaskScheduler{
 							nextline = file1_scanner.next(r_time_pattern);
 							release_time = Integer.parseInt(nextline);
 						}
-						task_buffer.append(nextline);
-						task_buffer.append(" ");
+
 						
 				}catch(NoSuchElementException er)
 				{
@@ -87,16 +83,13 @@ public class TaskScheduler{
 				}
 				
 			}
-			task_queue.insert(release_time.intValue(), tmp);
+			task_queue.insert(release_time.intValue(), tmp);//insert a task into the task queue and use the release time as the key.
 		}
 		Entry<Integer, Task_Tuple> task_tmp = task_queue.removeMin();
+		
 		//secondly, we schedule the tasks with time sequence. 
 		schedule_queue.insert(task_tmp.getValue().rd_time, new Task_Tuple(task_tmp.getKey(), task_tmp.getValue().task_name));
-
-
-
-		//StringBuffer write_buffer = new StringBuffer("");
-		
+		//this writer is used to write the output file file2.txt
 		BufferedWriter out_file =  null;
 		try{
 			out_file = new BufferedWriter(new FileWriter(file2));}
@@ -105,19 +98,26 @@ public class TaskScheduler{
 			e.printStackTrace();
 		}
 		String write_buffer_string = new String("");
+		//cur_time is the current time which is a trigger signal for scheduling.
 		int cur_time = 0;
 		while((!task_queue.isEmpty())||(!schedule_queue.isEmpty())){
+			//this loop is used to add released tasks into the schedule_queue for further scheduling.
 			while((!task_queue.isEmpty())&&(task_queue.min().getKey()==cur_time))
 			{	
 				Entry<Integer, Task_Tuple> cur_task = task_queue.removeMin();
 
 				schedule_queue.insert(cur_task.getValue().rd_time, new Task_Tuple(cur_task.getKey(), cur_task.getValue().task_name));
 			}
+			//this loop is to schedule 2 tasks to two cores. 
 			for(int j = 0 ; j < m; j++)
 			{
 				if(!schedule_queue.isEmpty())
 				{
 					Entry<Integer, Task_Tuple> tmp_sche_result = schedule_queue.removeMin();
+					/*if there is a task added before which has not been scheduled and the deadline of that
+					 * task is passed. Then it indicates that a feasible scheduling is not possible. We write 
+					 * this info to the output file and return. 
+					 */
 					if(tmp_sche_result.getKey() <= cur_time)
 					{
 						System.out.println("No feasible schedule exists");
@@ -135,6 +135,11 @@ public class TaskScheduler{
 						return;
 					}
 					else{
+						/*
+						 * if the current task can still be scheduled. Then we assign a core to the task. Then 
+						 * we remove this task from schedule_queue. The info of this scheduling is written into 
+						 * the write buffer which would be written into output file later. 
+						 */
 						//write_buffer.append(tmp_sche_result.getValue().task_name).append(" ").append(cur_time).append(" ");
 						System.out.printf("task for time %d is %s\n", cur_time, tmp_sche_result.getValue().task_name);
 						write_buffer_string = write_buffer_string + tmp_sche_result.getValue().task_name + " " + cur_time + " ";
@@ -144,6 +149,7 @@ public class TaskScheduler{
 			}
 			cur_time++;
 		}
+		//write the buffer to the output file. 
 		try{
 			out_file.write(write_buffer_string);
 			out_file.close();
