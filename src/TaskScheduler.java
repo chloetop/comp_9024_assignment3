@@ -10,7 +10,13 @@ import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 import java.io.*;
 import java.lang.*;
-
+/*
+ * this class is to describe a task_tuple.
+ * For the task_queue, the rd_time is deadline. For the schedule_queue, the rd_time is 
+ * release time. So that we can insert Entry<release time, Task_Tuple(deadline, task_name)> 
+ * into task_queue. Meanwhile, insert Entry<deadline time, Task_Tuple(release time, task_name)> 
+ * into schedule queue for scheduling.
+ */
 class Task_Tuple{
 	 Integer rd_time;   //this rd_time could either be the release time or deadline time. 
 	 String task_name;
@@ -30,7 +36,17 @@ public class TaskScheduler{
 	//schedule_queue is a priority queue for the scheduler to implement EDF scheduling. The keys of this queue is the deadline time.
 	static HeapPriorityQueue<Integer,Task_Tuple> schedule_queue = new HeapPriorityQueue<Integer,Task_Tuple>();
 
-	//m is the number of cpu cores. 
+	/*
+	 * The time complexity of scheduler is O(nlogn), where n is the number of tasks. 
+	 * Firstly, we insert the tasks in the input file to task_queue. For each task, the time consumed 
+	 * to insert it into the task_queue is O(logn). So the time complexity of this step is O(nlogn). 
+	 * Secondly, we remove the tasks from task_queue according to time and insert these tasks into the 
+	 * schedule_queue. Each remove and insert cost O(logn) time due to the down/up-heap. So the insertions
+	 * and removes cost O(nlogn) time, repectively. 
+	 * At the same time, we remove the tasks in schedule_queue according to the deadline and assign them to 
+	 * different CPU cores. All the removes cost O(nlogn) time. 
+	 * Overall, the time complexity is O(nlogn).
+	 */
 	static void scheduler(String file1, String file2, int m){
 		Scanner file1_scanner;
 		//we read input file file1.txt by a scanner, and FileNotFound exception is handled. 
@@ -140,7 +156,6 @@ public class TaskScheduler{
 						 * we remove this task from schedule_queue. The info of this scheduling is written into 
 						 * the write buffer which would be written into output file later. 
 						 */
-						//write_buffer.append(tmp_sche_result.getValue().task_name).append(" ").append(cur_time).append(" ");
 						System.out.printf("task for time %d is %s\n", cur_time, tmp_sche_result.getValue().task_name);
 						write_buffer_string = write_buffer_string + tmp_sche_result.getValue().task_name + " " + cur_time + " ";
 						
