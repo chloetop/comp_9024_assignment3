@@ -11,35 +11,68 @@ import java.util.regex.Matcher;
 import java.io.*;
 import java.lang.*;
 
+class Task_Tuple{
+	 Integer rd_time;   //this rd_time could either be the release time or deadline time. 
+	 String task_name;
+	 Task_Tuple(){}
+	 Task_Tuple(Integer time, String name){rd_time = time; task_name = name;}
+	 void Set_time(Integer t){rd_time =t;}
+	 void Set_name(String name){task_name = name;}
+}
+
 public class TaskScheduler{
 	
-	static private String task_name_pattern = "([a-z])([a-z]\\d)*";
+	static private String task_name_pattern = "([a-z])([0-9])*";
 	static private String r_time_pattern = "(\\d)(\\d)*";
 	static private String d_time_pattern = "([1-9])(\\d)*";
 	static private String file1_pattern = "(([a-z])([a-z]\\d)*(\\s)*)((\\d)(\\d)*(\\s)*)(([1-9])(\\d)*(\\s)*)";
 	
-	static Pattern t_name_p = Pattern.compile(task_name_pattern);
-	static Pattern r_time_p = Pattern.compile(r_time_pattern);
-	static Pattern d_time_p = Pattern.compile(d_time_pattern);
+	//static Pattern t_name_p = Pattern.compile(task_name_pattern);
+	//static Pattern r_time_p = Pattern.compile(r_time_pattern);
+	//static Pattern d_time_p = Pattern.compile(d_time_pattern);
 	static Pattern file1_p = Pattern.compile(file1_pattern);
-			
 	
-	static void scheduler(String file1, String file2){
+	static HeapPriorityQueue<Integer,Task_Tuple> task_queue = new HeapPriorityQueue<Integer,Task_Tuple>();
+	
+	static HeapPriorityQueue<Integer,Task_Tuple> schedule_queue = new HeapPriorityQueue<Integer,Task_Tuple>();
+	//m is the number of cpu cores. 
+	static void scheduler(String file1, String file2, int m){
 		Scanner file1_scanner;
 		try{
 			file1_scanner = new Scanner(new FileReader(file1));
 			
 		}catch(FileNotFoundException e){
-			System.out.println("File1 does not exsit.");
+			System.out.println("File1 does not exsist.");
 			return;
 		}
 		StringBuffer task_buffer = new StringBuffer();
-		while(file1_scanner.hasNextLine())
+		while(file1_scanner.hasNext())   //firstly, add all the tasks into a priority task queue. The key of this queue is the release time.
 		{
+			Task_Tuple tmp = new Task_Tuple();
+			Integer release_time = -1;
+			String nextline;
 			for(int i = 0; i < 3; i++)
 			{
 				try{
-						task_buffer.append(file1_scanner.nextLine());
+						
+						if(i == 0)
+						{
+							nextline = file1_scanner.next(task_name_pattern);
+							tmp.Set_name(nextline);
+						}
+						else if(i == 2)
+						{
+							nextline = file1_scanner.next(d_time_pattern);
+							tmp.Set_time(Integer.parseInt(nextline));
+						}
+						else
+						{
+							nextline = file1_scanner.next(r_time_pattern);
+							release_time = Integer.parseInt(nextline);
+						}
+						task_buffer.append(nextline);
+						task_buffer.append(" ");
+						
 				}catch(NoSuchElementException er)
 					{
 							System.out.println("File1 is not complete");
@@ -47,33 +80,66 @@ public class TaskScheduler{
 					}
 				
 			}
-			Matcher m = file1_p.matcher(task_buffer);
-			if(m.find()){
-				System.out.println("Found " + m.group());
+			task_queue.insert(release_time.intValue(), tmp);
+			/*Matcher mtch = file1_p.matcher(task_buffer);
+			if(mtch.find()){
+				System.out.println("Found " + mtch.group());
 			}
 			else
 			{
 				System.out.println("File1 format error!");
 				return;
-			}
+			}*/
 			
 		}
+		Entry<Integer, Task_Tuple> task_tmp = task_queue.removeMin();
+		//secondly, we schedule the tasks with time sequence. 
+		schedule_queue.insert(task_tmp.getValue().rd_time, new Task_Tuple(task_tmp.getKey(), task_tmp.getValue().task_name));
+		int cur_time = 0;
+		while((!task_queue.isEmpty())||(!schedule_queue.isEmpty())){
+			while((!task_queue.isEmpty())&&(task_queue.min().getKey()==cur_time))
+			{	
+				Entry<Integer, Task_Tuple> cur_task = task_queue.removeMin();
+				schedule_queue.insert(cur_task.getValue().rd_time, new Task_Tuple(cur_task.getKey(), cur_task.getValue().task_name));
+			}
+			for(int j = 0 ; j < m; j++)
+			{
+				if(!schedule_queue.isEmpty())
+				{
+					Entry<Integer, Task_Tuple> tmp_sche_result = schedule_queue.removeMin();
+					System.out.printf("task for time %d is %s\n", cur_time, tmp_sche_result.getValue().task_name);
+				}
+			}
+			cur_time++;
+		}
+		
 
 	}
 	
 	public static void main(String[] args)
 	{
-		String a = "a 0 1 b 2 4 c 2 3 ";
-		Matcher m = file1_p.matcher(a);
-		scheduler("a","b");
-
 		
-		//{
-		//	System.out.println("No matches");
-		//}
+		TaskScheduler.scheduler("/home/wuhuijun/java_workspace/comp9024_assignment3/src/file1.txt", "file2.txt", 2);
+	/*	String task_name_pattern = "([a-z])([0-9])*";
+		String file = "v1 0 2 v2 0 3 v3 1 2 v4 1 2 v5 1 3 v6 3 4 v7 3 4 v8 3 4 v9 3 4 v10 4 6  v11 6 7 v12 6 7 v13 7 8 v14 7 8 v15 7 9 v16 7 10";
+		Scanner s = new Scanner(file);
 		
-		return;
-		
+		String r_time_pattern = "(\\d)(\\d)*";
+		String d_time_pattern = "([1-9])(\\d)*";
+		Pattern file1_p = Pattern.compile(task_name_pattern);
+		Pattern r_time = Pattern.compile(r_time_pattern);
+		Pattern d_time = Pattern.compile(d_time_pattern);
+		try{
+			
+			String next = s.next(task_name_pattern);
+			System.out.println(next);
+			next = s.next(r_time);
+			System.out.println(next);
+		}catch(NoSuchElementException e)
+		{
+			System.out.println("error");
+		}
+		*/
 		
 	}
 }
